@@ -35,7 +35,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { auth, db, signIn, logout as firebaseLogout } from "./lib/firebase";
-import { onAuthStateChanged, User as AuthUser } from "firebase/auth";
+import { onAuthStateChanged, User as AuthUser, getRedirectResult } from "firebase/auth";
 import { doc, onSnapshot, setDoc, getDoc, updateDoc, increment } from "firebase/firestore";
 
 // Declare Telegram WebApp types
@@ -52,7 +52,8 @@ enum View {
   ECONOMY_PACKAGES = "economy_packages",
   PREMIUM_PACKAGES = "premium_packages",
   WALLET = "wallet",
-  ADMIN = "admin"
+  ADMIN = "admin",
+  PROFILE = "profile"
 }
 
 interface PackageDef {
@@ -187,6 +188,14 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
+    // Check for redirect result
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect Auth Error:", error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("دامنه فعلی در کنسول فایربیس مجاز نیست. لطفا دامنه را در بخش Authorized Domains اضافه کنید.");
+      }
+    });
+
     // Auth Listener
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       setAuthUser(user);
@@ -273,8 +282,8 @@ export default function App() {
       </div>
 
       <header className="container mx-auto px-4 md:px-6 py-4 md:py-6 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 relative z-30 border-b border-white/5 bg-[#020617]/80 backdrop-blur-md sticky top-0">
-        <div className="flex items-center justify-between w-full md:w-auto gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between w-full md:w-auto gap-3 shrink-0">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView(View.HOME)}>
             <VidonetLogo className="w-10 h-10 md:w-12 md:h-12" />
             <div className="hidden sm:block">
               <h1 className="text-xl md:text-2xl font-black tracking-tighter text-white uppercase bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-teal-500">
@@ -292,53 +301,54 @@ export default function App() {
           <div className="flex md:hidden items-center gap-2">
             <div onClick={() => setCurrentView(View.WALLET)} className="flex items-center gap-2 bg-slate-900/40 border border-white/5 px-3 py-2 rounded-xl cursor-pointer">
               <p className="text-xs font-black text-cyan-400">{dbUser?.balance || 0}</p>
-              <Plus size={14} className="text-cyan-400" />
+              <Wallet size={14} className="text-cyan-400" />
             </div>
-            {dbUser?.role === 'admin' && (
-              <button onClick={() => setCurrentView(View.ADMIN)} className={`p-2 rounded-xl border transition-all ${currentView === View.ADMIN ? 'bg-indigo-500 border-indigo-400' : 'bg-slate-900/50 border-white/5 text-indigo-400'}`}>
-                <SettingsIcon size={16} />
-              </button>
-            )}
-            {authUser && (
-              <button onClick={() => firebaseLogout()} className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-                <LogOut size={16} />
+            {authUser ? (
+              <div onClick={() => setCurrentView(View.PROFILE)} className="w-9 h-9 rounded-xl border border-white/10 overflow-hidden cursor-pointer">
+                <img src={authUser.photoURL || ""} alt="Avatar" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <button onClick={() => signIn()} className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <UserIcon size={16} />
               </button>
             )}
           </div>
         </div>
 
-        <nav className="flex items-center bg-slate-950/80 backdrop-blur-2xl border border-white/10 p-1 rounded-xl md:rounded-2xl shadow-xl w-full md:w-auto justify-center md:justify-start order-3 md:order-2">
-          <button onClick={() => setCurrentView(View.HOME)} className={`px-3 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.HOME ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
+        <nav className="flex items-center bg-slate-950/80 backdrop-blur-2xl border border-white/10 p-1 rounded-xl md:rounded-2xl shadow-xl w-full md:w-auto justify-center">
+          <button onClick={() => setCurrentView(View.HOME)} className={`px-4 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.HOME ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
             <HomeIcon size={14} className="md:w-4 md:h-4" /> خانه
           </button>
-          <button onClick={() => setCurrentView(View.ECONOMY_PACKAGES)} className={`px-3 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.ECONOMY_PACKAGES ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
+          <button onClick={() => setCurrentView(View.ECONOMY_PACKAGES)} className={`px-4 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.ECONOMY_PACKAGES ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
             <Zap size={14} className="md:w-4 md:h-4" /> اقتصادی
           </button>
-          <button onClick={() => setCurrentView(View.PREMIUM_PACKAGES)} className={`px-3 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.PREMIUM_PACKAGES ? 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
-            <Rocket size={14} className="md:w-4 md:h-4" /> پنل ویژه
+          <button onClick={() => setCurrentView(View.PREMIUM_PACKAGES)} className={`px-4 md:px-5 py-2 rounded-lg md:rounded-xl transition-all font-bold text-[10px] md:text-xs flex items-center gap-1.5 md:gap-2 ${currentView === View.PREMIUM_PACKAGES ? 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]' : 'text-slate-400 hover:text-slate-200'}`}>
+            <Rocket size={14} className="md:w-4 md:h-4" /> ویژه
           </button>
         </nav>
 
-        <div className="hidden md:flex items-center gap-3 order-2 md:order-3">
-          <div onClick={() => setCurrentView(View.WALLET)} className="flex items-center gap-3 bg-slate-900/40 border border-white/5 px-5 py-2.5 rounded-2xl cursor-pointer hover:border-cyan-500/30 transition-all group shrink-0">
-            <div className="text-left">
-              <p className="text-[9px] text-slate-500 font-black">MY WALLET</p>
-              <p className="text-sm font-black text-cyan-400">{dbUser?.balance || 0} <span className="text-[10px]">تومان</span></p>
+        <div className="hidden md:flex items-center gap-3 shrink-0">
+          <div onClick={() => setCurrentView(View.WALLET)} className="flex items-center gap-3 bg-slate-900/40 border border-white/5 px-4 py-2 rounded-2xl cursor-pointer hover:border-cyan-500/30 transition-all group">
+            <div className="text-left leading-tight">
+              <p className="text-[9px] text-slate-500 font-black">WALLET</p>
+              <p className="text-sm font-black text-cyan-400">{dbUser?.balance || 0}</p>
             </div>
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500 group-hover:text-white transition-all">
-              <Plus size={18} />
+            <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500 group-hover:text-white transition-all">
+              <Plus size={16} />
             </div>
           </div>
-
-          {dbUser?.role === 'admin' && (
-            <button onClick={() => setCurrentView(View.ADMIN)} className={`p-3 rounded-2xl border transition-all ${currentView === View.ADMIN ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-slate-900/50 border-white/5 hover:border-indigo-500/50 text-indigo-400'}`}>
-              <SettingsIcon size={18} />
+          {authUser ? (
+            <div onClick={() => setCurrentView(View.PROFILE)} className="w-10 h-10 rounded-2xl border-2 border-white/10 overflow-hidden cursor-pointer hover:border-cyan-500 transition-all">
+              <img src={authUser.photoURL || ""} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <button onClick={() => signIn()} className="px-6 py-2 rounded-2xl bg-cyan-500 text-white font-black text-sm shadow-lg shadow-cyan-500/20">
+              ورود
             </button>
           )}
-          
-          {authUser && (
-            <button onClick={() => firebaseLogout()} className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all">
-              <LogOut size={18} />
+          {dbUser?.role === 'admin' && (
+            <button onClick={() => setCurrentView(View.ADMIN)} className={`p-2.5 rounded-2xl border transition-all ${currentView === View.ADMIN ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-slate-900/50 border-white/10 text-indigo-400 hover:border-indigo-400'}`}>
+              <SettingsIcon size={18} />
             </button>
           )}
         </div>
@@ -667,35 +677,68 @@ export default function App() {
                </motion.div>
             </div>
           )}
+          {currentView === View.PROFILE && authUser && (
+            <motion.div key="profile" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-4xl mx-auto">
+              <div className="bg-slate-900/40 border border-white/5 rounded-[4rem] p-12 backdrop-blur-3xl relative overflow-hidden">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-32 h-32 rounded-[2.5rem] border-4 border-cyan-500/30 overflow-hidden mb-6 shadow-2xl">
+                    <img src={authUser.photoURL || ""} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                  <h2 className="text-3xl font-black text-white mb-2">{authUser.displayName}</h2>
+                  <p className="text-slate-400 mb-8 font-medium">{authUser.email}</p>
+                  
+                  <div className="grid grid-cols-2 gap-6 w-full max-w-lg mb-10">
+                    <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                      <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase">موجودی کیف پول</p>
+                      <p className="text-2xl font-black text-cyan-400">{dbUser?.balance || 0} <span className="text-xs">تومان</span></p>
+                    </div>
+                    <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                      <p className="text-[10px] text-slate-500 font-bold mb-2 uppercase">سطح کاربری</p>
+                      <p className="text-2xl font-black text-teal-400 uppercase">{dbUser?.role || 'User'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4 w-full max-w-sm">
+                    <button onClick={() => setCurrentView(View.WALLET)} className="w-full bg-cyan-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-cyan-500/20">
+                      افزایش موجودی
+                    </button>
+                    <button onClick={() => firebaseLogout()} className="w-full bg-red-500/10 border border-red-500/20 text-red-500 py-4 rounded-2xl font-black text-lg">
+                      خروج از حساب کاربر
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
       {/* Floating Support Hub */}
-      <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[95%] max-w-4xl z-50 px-4">
-        <div className="bg-slate-950/80 backdrop-blur-3xl border border-white/10 p-4 rounded-full flex items-center justify-between shadow-[0_20px_80px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center gap-4 mr-3">
+      <motion.div initial={{ y: 100 }} animate={{ y: 0 }} className="fixed bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 w-[92%] sm:w-[95%] max-w-4xl z-50">
+        <div className="bg-slate-950/80 backdrop-blur-3xl border border-white/10 p-2 md:p-4 rounded-full flex items-center justify-between shadow-[0_20px_80px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-3 md:gap-4 mr-2 md:mr-3 shrink-0">
              <div className="relative">
-                <div className="w-12 h-12 rounded-full border-2 border-cyan-500/50 overflow-hidden ring-4 ring-cyan-500/10">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-cyan-500/50 overflow-hidden ring-4 ring-cyan-500/10">
                   <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100&h=100" alt="Support" className="w-full h-full object-cover" />
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-teal-500 border-2 border-slate-950 rounded-full shadow-[0_0_15px_#14b8a6]" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-4 md:h-4 bg-teal-500 border-2 border-slate-950 rounded-full shadow-[0_0_15px_#14b8a6]" />
              </div>
-             <div className="hidden sm:block">
-                <p className="text-sm font-black text-white leading-none mb-1">مرکز پشتیبانی ویدونت</p>
+             <div className="hidden xs:block">
+                <p className="text-[12px] md:text-sm font-black text-white leading-none mb-1">مرکز پشتیبانی</p>
                 <div className="flex items-center gap-1.5">
-                   <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                   <p className="text-[10px] text-teal-400 font-bold uppercase tracking-wider">Online Support</p>
+                   <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                   <p className="text-[8px] md:text-[10px] text-teal-400 font-bold uppercase tracking-wider">Online</p>
                 </div>
              </div>
           </div>
           
-          <div className="flex gap-2">
-            <button className="bg-white/5 hover:bg-white/10 p-3 rounded-full text-white transition-all">
-               <Share2 size={18} />
+          <div className="flex gap-1.5 md:gap-2">
+            <button className="bg-white/5 hover:bg-white/10 p-2 md:p-3 rounded-full text-white transition-all">
+               <Share2 size={16} className="md:w-[18px] md:h-[18px]" />
             </button>
-            <button className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:scale-105 active:scale-95 transition-all text-white px-8 py-3 rounded-full font-black text-sm md:text-md flex items-center gap-3 shadow-[0_0_20px_rgba(34,211,238,0.3)] group whitespace-nowrap">
+            <button className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:scale-105 active:scale-95 transition-all text-white px-4 md:px-8 py-2 md:py-3 rounded-full font-black text-xs md:text-md flex items-center gap-2 md:gap-3 shadow-[0_0_20px_rgba(34,211,238,0.3)] group whitespace-nowrap">
               گفتگو با کارشناس
-              <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              <Send size={16} className="md:w-[18px] md:h-[18px] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </button>
           </div>
         </div>
