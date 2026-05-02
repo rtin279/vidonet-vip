@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user balance and role information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "balance": { "type": "number", "description": "Current wallet balance in Tomans" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "email", "balance", "role"]
+    },
+    "AppSettings": {
+      "title": "App Settings",
+      "description": "Global settings for the application.",
+      "type": "object",
+      "properties": {
+        "salesEnabled": { "type": "boolean", "description": "Whether users can purchase packages" }
+      },
+      "required": ["salesEnabled"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles."
+    },
+    "/settings/global": {
+      "schema": "AppSettings",
+      "description": "Global configuration document."
+    }
+  }
+}
